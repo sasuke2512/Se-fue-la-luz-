@@ -1,0 +1,6 @@
+{
+  "name": "Se fue la luz!",
+  "description": "Registro 100% offline de apagones eléctricos con cronómetro persistente, historial, estadísticas y respaldo JSON.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

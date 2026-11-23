@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Se fue la luz!</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_history">Historial</string>
+    <string name="nav_stats">Estadísticas</string>
+    <string name="nav_settings">Ajustes</string>
+    <string name="status_power_on">Hay luz</string>
+    <string name="status_power_off">Sin luz</string>
+    <string name="action_power_went_out">Se fue la luz</string>
+    <string name="action_power_came_back">Volvió la luz</string>
+    <string name="action_manual_entry">Registrar a mano</string>
+    <string name="action_cancel_active">Cancelar apagón activo</string>
+    <string name="notification_channel_name">Apagón en curso</string>
+    <string name="notification_channel_desc">Muestra una notificación discreta con el tiempo transcurrido mientras no hay electricidad.</string>
+    <string name="notification_title">Sin luz</string>
+    <string name="footer_line_1">Se fue la luz! · Versión 1.0.0</string>
+    <string name="footer_line_2_prefix">Creado por </string>
+    <string name="footer_author">SaSuKe2512</string>
+    <string name="footer_line_3">© 2026 Se fue la luz! Todos los derechos reservados.</string>
+</resources>
