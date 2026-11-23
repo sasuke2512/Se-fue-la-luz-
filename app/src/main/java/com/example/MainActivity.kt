@@ -148,7 +148,7 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
     }
 
     val density = LocalDensity.current
-    var bottomOverlayHeight by remember { mutableStateOf(128.dp) }
+    var bottomOverlayHeight by remember { mutableStateOf(88.dp) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

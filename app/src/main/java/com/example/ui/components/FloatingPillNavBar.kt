@@ -41,15 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -97,18 +90,18 @@ fun FloatingPillBottomBarWithFooter(
     onNavigate: (AppDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.96f))
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             modifier = Modifier
                 .widthIn(max = 560.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .testTag("floating_nav_pill"),
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
@@ -186,81 +179,5 @@ fun FloatingPillBottomBarWithFooter(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        AppFooterLines(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("app_footer")
-        )
-    }
-}
-
-@Composable
-fun AppFooterLines(modifier: Modifier = Modifier) {
-    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val linkColor = MaterialTheme.colorScheme.primary
-
-    val line1 = stringResource(R.string.footer_line_1)
-    val line2Prefix = stringResource(R.string.footer_line_2_prefix)
-    val author = stringResource(R.string.footer_author)
-    val line3 = stringResource(R.string.footer_line_3)
-
-    val line2Annotated = remember(line2Prefix, author, linkColor) {
-        buildAnnotatedString {
-            append(line2Prefix)
-            withLink(
-                LinkAnnotation.Url(
-                    url = "https://x.com/saske2512",
-                    styles = TextLinkStyles(
-                        style = SpanStyle(
-                            color = linkColor,
-                            fontWeight = FontWeight.SemiBold,
-                            textDecoration = TextDecoration.Underline
-                        )
-                    )
-                )
-            ) {
-                append(author)
-            }
-        }
-    }
-
-    val footerTextStyle = MaterialTheme.typography.labelSmall.copy(
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = (-0.1).sp,
-        color = mutedColor
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = line1,
-            style = footerTextStyle,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Clip
-        )
-        Text(
-            text = line2Annotated,
-            style = footerTextStyle,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Clip
-        )
-        Text(
-            text = line3,
-            style = footerTextStyle,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Clip
-        )
     }
 }

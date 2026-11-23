@@ -78,6 +78,7 @@ data class LongestOutageRecord(
 )
 
 data class OutageStatsSnapshot(
+    val effectiveTrackingStartMillis: Long,
     val today: PeriodStats,
     val thisWeek: PeriodStats,
     val thisMonth: PeriodStats,
@@ -93,8 +94,15 @@ object OutageStatsCalculator {
     fun calculate(
         outages: List<OutageEntity>,
         nowMillis: Long,
+        trackingStartMillis: Long? = null,
         timeZone: TimeZone = TimeZone.getDefault()
     ): OutageStatsSnapshot {
+        val earliestOutageStart = outages.minOfOrNull { it.startTimeMillis }
+        val effectiveTrackingStartMillis = listOfNotNull(
+            trackingStartMillis,
+            earliestOutageStart
+        ).minOrNull() ?: nowMillis
+
         val todayKey = DayKey.fromMillis(nowMillis, timeZone)
         val todayStart = todayKey.startOfDayMillis(timeZone)
         val weekStart = startOfWeekMillis(nowMillis, timeZone)
@@ -103,17 +111,20 @@ object OutageStatsCalculator {
         val todayStats = calculatePeriodStats(
             outages = outages,
             windowStartMillis = todayStart,
-            windowEndMillis = nowMillis
+            windowEndMillis = nowMillis,
+            effectiveTrackingStartMillis = effectiveTrackingStartMillis
         )
         val weekStats = calculatePeriodStats(
             outages = outages,
             windowStartMillis = weekStart,
-            windowEndMillis = nowMillis
+            windowEndMillis = nowMillis,
+            effectiveTrackingStartMillis = effectiveTrackingStartMillis
         )
         val monthStats = calculatePeriodStats(
             outages = outages,
             windowStartMillis = monthStart,
-            windowEndMillis = nowMillis
+            windowEndMillis = nowMillis,
+            effectiveTrackingStartMillis = effectiveTrackingStartMillis
         )
 
         val dailyBuckets = buildDailyBuckets(
@@ -132,8 +143,22 @@ object OutageStatsCalculator {
             dailyBuckets[day]?.withoutPowerMillis ?: 0L
         }
 
-        val avg7 = last7Days.sumOf { it.withoutPowerMillis } / 7L
-        val avg30 = last30DaysTotal / 30L
+        val effectiveStartDay = DayKey.fromMillis(effectiveTrackingStartMillis, timeZone)
+        val window7StartDay = todayKey.addDays(-6, timeZone)
+        val window30StartDay = todayKey.addDays(-29, timeZone)
+
+        val activeDaysIn7 = daysBetweenInclusive(
+            start = maxOf(window7StartDay, effectiveStartDay),
+            end = todayKey
+        ).coerceIn(1, 7)
+
+        val activeDaysIn30 = daysBetweenInclusive(
+            start = maxOf(window30StartDay, effectiveStartDay),
+            end = todayKey
+        ).coerceIn(1, 30)
+
+        val avg7 = last7Days.sumOf { it.withoutPowerMillis } / activeDaysIn7.toLong()
+        val avg30 = last30DaysTotal / activeDaysIn30.toLong()
 
         val longestRecorded = outages
             .mapNotNull { outage ->
@@ -154,6 +179,7 @@ object OutageStatsCalculator {
             )
 
         return OutageStatsSnapshot(
+            effectiveTrackingStartMillis = effectiveTrackingStartMillis,
             today = todayStats,
             thisWeek = weekStats,
             thisMonth = monthStats,
@@ -168,7 +194,8 @@ object OutageStatsCalculator {
     fun calculatePeriodStats(
         outages: List<OutageEntity>,
         windowStartMillis: Long,
-        windowEndMillis: Long
+        windowEndMillis: Long,
+        effectiveTrackingStartMillis: Long = windowStartMillis
     ): PeriodStats {
         if (windowEndMillis <= windowStartMillis) {
             return PeriodStats(0L, 0L, 0, 0L)
@@ -204,8 +231,19 @@ object OutageStatsCalculator {
         }
 
         val withoutPower = sumMergedIntervals(clippedIntervals)
-        val totalElapsed = (windowEndMillis - windowStartMillis).coerceAtLeast(0L)
-        val withPower = (totalElapsed - withoutPower).coerceAtLeast(0L)
+
+        val conLuzWindowStart = maxOf(windowStartMillis, effectiveTrackingStartMillis)
+        val withPower = if (windowEndMillis <= conLuzWindowStart) {
+            0L
+        } else {
+            val withoutInConLuzWindow = calculateMergedDurationInWindow(
+                outages = outages,
+                windowStartMillis = conLuzWindowStart,
+                windowEndMillis = windowEndMillis
+            )
+            val totalElapsed = (windowEndMillis - conLuzWindowStart).coerceAtLeast(0L)
+            (totalElapsed - withoutInConLuzWindow).coerceAtLeast(0L)
+        }
 
         return PeriodStats(
             withoutPowerMillis = withoutPower,
@@ -213,6 +251,42 @@ object OutageStatsCalculator {
             outageCount = count,
             longestOutageMillis = longestInWindow
         )
+    }
+
+    private fun calculateMergedDurationInWindow(
+        outages: List<OutageEntity>,
+        windowStartMillis: Long,
+        windowEndMillis: Long
+    ): Long {
+        if (windowEndMillis <= windowStartMillis) return 0L
+        val clipped = mutableListOf<Pair<Long, Long>>()
+        for (outage in outages) {
+            val effectiveEnd = (outage.endTimeMillis ?: windowEndMillis).coerceAtMost(windowEndMillis)
+            val start = outage.startTimeMillis
+            if (effectiveEnd <= windowStartMillis || start >= windowEndMillis || effectiveEnd <= start) {
+                continue
+            }
+            val clippedStart = maxOf(start, windowStartMillis)
+            val clippedEnd = minOf(effectiveEnd, windowEndMillis)
+            if (clippedEnd > clippedStart) {
+                clipped.add(clippedStart to clippedEnd)
+            }
+        }
+        return sumMergedIntervals(clipped)
+    }
+
+    fun daysBetweenInclusive(start: DayKey, end: DayKey): Int {
+        if (end <= start) return 1
+        val utc = TimeZone.getTimeZone("UTC")
+        val startNoon = Calendar.getInstance(utc).apply {
+            clear()
+            set(start.year, start.month - 1, start.dayOfMonth, 12, 0, 0)
+        }.timeInMillis
+        val endNoon = Calendar.getInstance(utc).apply {
+            clear()
+            set(end.year, end.month - 1, end.dayOfMonth, 12, 0, 0)
+        }.timeInMillis
+        return (((endNoon - startNoon) / 86_400_000L) + 1L).toInt().coerceAtLeast(1)
     }
 
     fun buildDailyBuckets(

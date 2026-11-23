@@ -105,7 +105,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(top = 12.dp, bottom = bottomContentPadding + 16.dp),
+                .padding(top = 12.dp, bottom = bottomContentPadding + 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // App Title + Current Date

@@ -60,6 +60,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.BuildConfig
 import com.example.R
 import com.example.data.local.AppThemeMode
 import com.example.domain.SpanishFormatters
@@ -80,6 +81,10 @@ fun SettingsScreen(
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     var deleteConfirmStep by remember { mutableIntStateOf(0) }
+    val appVersion = BuildConfig.VERSION_NAME
+    val trackingStartFormatted = remember(uiState.stats.effectiveTrackingStartMillis) {
+        SpanishFormatters.formatDateTime12h(uiState.stats.effectiveTrackingStartMillis)
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -91,7 +96,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(top = 12.dp, bottom = bottomContentPadding + 16.dp),
+                .padding(top = 12.dp, bottom = bottomContentPadding + 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -280,10 +285,35 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Versión 1.0.0",
+                        text = "Versión $appVersion",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("info_version_text")
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("info_tracking_since_row"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Seguimiento desde:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = trackingStartFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.End
                     )
                 }
 
@@ -307,8 +337,9 @@ fun SettingsScreen(
                 }
             }
 
-            // Mandatory Legal Block at the end, small and centered
-            LegalDisclaimerBlock(
+            // Unified Footer + Legal Closing Block
+            ClosingLegalBlock(
+                appVersion = appVersion,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 8.dp)
@@ -403,7 +434,10 @@ private fun SettingsSectionCard(
 }
 
 @Composable
-private fun LegalDisclaimerBlock(modifier: Modifier = Modifier) {
+private fun ClosingLegalBlock(
+    appVersion: String,
+    modifier: Modifier = Modifier
+) {
     val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
     val linkColor = MaterialTheme.colorScheme.primary
 
@@ -416,7 +450,7 @@ private fun LegalDisclaimerBlock(modifier: Modifier = Modifier) {
                     styles = TextLinkStyles(
                         style = SpanStyle(
                             color = linkColor,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             textDecoration = TextDecoration.Underline
                         )
                     )
@@ -438,21 +472,31 @@ private fun LegalDisclaimerBlock(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        // Línea A
+        Text(
+            text = "Se fue la luz! · Versión $appVersion",
+            style = legalTextStyle,
+            textAlign = TextAlign.Center
+        )
+        // Línea B
         Text(
             text = "© 2026 Se fue la luz! Todos los derechos reservados.",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
+        // Línea C
         Text(
             text = createdByAnnotated,
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
+        // Párrafo D
         Text(
             text = "UNE y Unión Eléctrica son marcas y nombres comerciales propiedad de la Unión Eléctrica de Cuba (UNE). Todos los derechos sobre esas marcas pertenecen a su propietario.",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
+        // Párrafo E
         Text(
             text = "«Se fue la luz!» es una aplicación personal, creada con fines informáticos e informativos, para que cada usuario lleve su propio registro de los apagones que anota a mano. No está afiliada, respaldada, patrocinada ni aprobada por la Unión Eléctrica de Cuba (UNE) ni por ninguna de sus empresas, y ningún dato de la app proviene de la UNE: todos los registros los introduce el propio usuario en su teléfono.",
             style = legalTextStyle,

@@ -63,7 +63,7 @@ fun StatsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(top = 12.dp, bottom = bottomContentPadding + 16.dp),
+                .padding(top = 12.dp, bottom = bottomContentPadding + 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
@@ -96,6 +96,17 @@ fun StatsScreen(
                 withoutAccent = semantic.powerOffAccent,
                 withAccent = semantic.powerOnAccent,
                 modifier = Modifier.testTag("stats_month_card")
+            )
+
+            Text(
+                text = "El tiempo con luz se cuenta desde que empezaste a usar la app: ${
+                    SpanishFormatters.formatDateTime12h(stats.effectiveTrackingStartMillis)
+                }.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .testTag("stats_tracking_start_note")
             )
 
             // Daily Averages

@@ -88,6 +88,11 @@ object SpanishFormatters {
         return "${dayKey.dayOfMonth} ${shortMonths[monthIdx]} ${dayKey.year}"
     }
 
+    fun formatDateTime12h(millis: Long, timeZone: TimeZone = TimeZone.getDefault()): String {
+        val dayKey = DayKey.fromMillis(millis, timeZone)
+        return "${formatFullDate(dayKey)}, ${formatTime12h(millis, timeZone)}"
+    }
+
     fun formatNumericDate(millis: Long, timeZone: TimeZone = TimeZone.getDefault()): String {
         val day = DayKey.fromMillis(millis, timeZone)
         return String.format(Locale.US, "%02d/%02d/%04d", day.dayOfMonth, day.month, day.year)

@@ -31,9 +31,8 @@ class OutageStatsCalculatorTest {
 
     @Test
     fun `cross midnight outage splits accurately and reconciles today week and month totals`() {
-        // Nov 23, 2026 is a Monday. So Nov 22 (Sunday) was previous week!
-        // Use Wednesday Nov 25, 2026 at 14:00 as "now" so Tuesday Nov 24 and Wednesday Nov 25 are both in the same week & month.
         val now = millisAt(2026, 11, 25, 14, 0)
+        val trackingStart = millisAt(2026, 11, 1, 0, 0)
 
         // Outage 1 (crosses midnight Tue Nov 24 22:00 -> Wed Nov 25 03:30 = 5h 30m total: 2h on Nov 24, 3h 30m on Nov 25)
         val crossMidnight = OutageEntity(
@@ -59,6 +58,7 @@ class OutageStatsCalculatorTest {
         val snapshot = OutageStatsCalculator.calculate(
             outages = listOf(crossMidnight, todayMorning, earlierMonth),
             nowMillis = now,
+            trackingStartMillis = trackingStart,
             timeZone = havanaTz
         )
 
@@ -72,13 +72,12 @@ class OutageStatsCalculatorTest {
         assertEquals(3 * hourMs + 30 * minMs, snapshot.today.longestOutageMillis)
 
         // This week (Mon Nov 23 00:00 -> Wed Nov 25 14:00 = 62h elapsed):
-        // Outage 1 (5h 30m) + Outage 2 (1h 15m) = 6h 45m without power; 2 distinct outages (cross-midnight not double counted!)
+        // Outage 1 (5h 30m) + Outage 2 (1h 15m) = 6h 45m without power; 2 distinct outages
         assertEquals(6 * hourMs + 45 * minMs, snapshot.thisWeek.withoutPowerMillis)
         assertEquals(62 * hourMs - (6 * hourMs + 45 * minMs), snapshot.thisWeek.withPowerMillis)
         assertEquals(2, snapshot.thisWeek.outageCount)
 
-        // This month (Nov 1 00:00 -> Nov 25 14:00 = 24*24h + 14h = 590h elapsed):
-        // 5h 30m + 1h 15m + 3h 43m = 10h 28m without power; 3 distinct outages
+        // This month (Nov 1 00:00 -> Nov 25 14:00 = 590h elapsed):
         val expectedMonthWithout = 10 * hourMs + 28 * minMs
         assertEquals(expectedMonthWithout, snapshot.thisMonth.withoutPowerMillis)
         assertEquals(590 * hourMs - expectedMonthWithout, snapshot.thisMonth.withPowerMillis)
@@ -90,10 +89,9 @@ class OutageStatsCalculatorTest {
         assertEquals(2 * hourMs, nov24Bucket.withoutPowerMillis)
         assertEquals(4 * hourMs + 45 * minMs, nov25Bucket.withoutPowerMillis)
 
-        // Last 7 days average = (6h 45m) / 7
+        // Tracking started Nov 1 -> 7 active days in 7-day window, 25 active days in 30-day window (Nov 1..25)
         assertEquals((6 * hourMs + 45 * minMs) / 7L, snapshot.avgDailyLast7DaysMillis)
-        // Last 30 days average = (10h 28m) / 30 (since Nov 2 is within last 30 days of Nov 25)
-        assertEquals(expectedMonthWithout / 30L, snapshot.avgDailyLast30DaysMillis)
+        assertEquals(expectedMonthWithout / 25L, snapshot.avgDailyLast30DaysMillis)
 
         // Longest single outage is the 5h 30m cross-midnight one
         val longest = snapshot.longestRecordedOutage
@@ -109,18 +107,97 @@ class OutageStatsCalculatorTest {
     }
 
     @Test
+    fun `with power counts only from tracking start and excludes prior unmonitored hours`() {
+        // First use today (Nov 23) at 18:00, queried today at 20:00 with a 30-minute outage (19:00 -> 19:30)
+        val trackingStart = millisAt(2026, 11, 23, 18, 0)
+        val now = millisAt(2026, 11, 23, 20, 0)
+        val outage = OutageEntity(
+            id = 10L,
+            startTimeMillis = millisAt(2026, 11, 23, 19, 0),
+            endTimeMillis = millisAt(2026, 11, 23, 19, 30)
+        )
+
+        val snapshot = OutageStatsCalculator.calculate(
+            outages = listOf(outage),
+            nowMillis = now,
+            trackingStartMillis = trackingStart,
+            timeZone = havanaTz
+        )
+
+        val hourMs = 3_600_000L
+        val minMs = 60_000L
+
+        assertEquals(trackingStart, snapshot.effectiveTrackingStartMillis)
+
+        // Today: 2h tracked (18:00 -> 20:00) minus 30 min outage = 1h 30m with power
+        assertEquals(30 * minMs, snapshot.today.withoutPowerMillis)
+        assertEquals(1 * hourMs + 30 * minMs, snapshot.today.withPowerMillis)
+        assertEquals("1 h 30 min", SpanishFormatters.formatDurationReadable(snapshot.today.withPowerMillis))
+
+        // Month: MUST NOT include any hours before 18:00 -> also 1h 30m with power
+        assertEquals(30 * minMs, snapshot.thisMonth.withoutPowerMillis)
+        assertEquals(1 * hourMs + 30 * minMs, snapshot.thisMonth.withPowerMillis)
+
+        // Week: also 1h 30m with power
+        assertEquals(1 * hourMs + 30 * minMs, snapshot.thisWeek.withPowerMillis)
+
+        // Daily averages divide by 1 day (started today), not 7 or 30
+        assertEquals(30 * minMs, snapshot.avgDailyLast7DaysMillis)
+        assertEquals(30 * minMs, snapshot.avgDailyLast30DaysMillis)
+    }
+
+    @Test
+    fun `manual outage older than first launch shifts effective tracking start earlier`() {
+        val firstLaunch = millisAt(2026, 11, 23, 18, 0)
+        val now = millisAt(2026, 11, 23, 20, 0)
+
+        // User manually records an older outage on Nov 21 from 10:00 to 12:00 (2h)
+        val oldManual = OutageEntity(
+            id = 20L,
+            startTimeMillis = millisAt(2026, 11, 21, 10, 0),
+            endTimeMillis = millisAt(2026, 11, 21, 12, 0)
+        )
+
+        val snapshot = OutageStatsCalculator.calculate(
+            outages = listOf(oldManual),
+            nowMillis = now,
+            trackingStartMillis = firstLaunch,
+            timeZone = havanaTz
+        )
+
+        val hourMs = 3_600_000L
+
+        // Effective tracking start shifts to Nov 21 10:00
+        assertEquals(oldManual.startTimeMillis, snapshot.effectiveTrackingStartMillis)
+
+        // Today (Nov 23): full 20h elapsed since 00:00 because tracking started Nov 21
+        assertEquals(0L, snapshot.today.withoutPowerMillis)
+        assertEquals(20 * hourMs, snapshot.today.withPowerMillis)
+
+        // Month: window starts at Nov 21 10:00 -> Nov 23 20:00 = 58h, minus 2h outage = 56h with power
+        assertEquals(2 * hourMs, snapshot.thisMonth.withoutPowerMillis)
+        assertEquals(56 * hourMs, snapshot.thisMonth.withPowerMillis)
+
+        // Daily average: Nov 21, 22, 23 = 3 days elapsed -> 2h / 3 = 40 min/day
+        assertEquals((2 * hourMs) / 3L, snapshot.avgDailyLast7DaysMillis)
+        assertEquals((2 * hourMs) / 3L, snapshot.avgDailyLast30DaysMillis)
+    }
+
+    @Test
     fun `spanish 12h formatting and clipboard summary match expected pattern`() {
         val start = millisAt(2026, 11, 23, 6, 32)
         val end = millisAt(2026, 11, 23, 10, 15)
         assertEquals("6:32 a. m. – 10:15 a. m.", SpanishFormatters.formatTimeRange12h(start, end, havanaTz))
         assertEquals("3 h 43 min", SpanishFormatters.formatDurationReadable(end - start))
         assertEquals("00:05:09", SpanishFormatters.formatChronometer(309_000L))
+        assertEquals("23 nov 2026, 6:32 a. m.", SpanishFormatters.formatDateTime12h(start, havanaTz))
 
         val now = millisAt(2026, 11, 23, 12, 0)
         val todayStats = OutageStatsCalculator.calculatePeriodStats(
             outages = listOf(OutageEntity(id = 1, startTimeMillis = start, endTimeMillis = end)),
             windowStartMillis = DayKey(2026, 11, 23).startOfDayMillis(havanaTz),
-            windowEndMillis = now
+            windowEndMillis = now,
+            effectiveTrackingStartMillis = DayKey(2026, 11, 23).startOfDayMillis(havanaTz)
         )
         val summary = SpanishFormatters.buildTodayClipboardSummary(now, todayStats, havanaTz)
         assertEquals(

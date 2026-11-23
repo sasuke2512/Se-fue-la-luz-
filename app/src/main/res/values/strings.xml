@@ -13,8 +13,4 @@
     <string name="notification_channel_name">Apagón en curso</string>
     <string name="notification_channel_desc">Muestra una notificación discreta con el tiempo transcurrido mientras no hay electricidad.</string>
     <string name="notification_title">Sin luz</string>
-    <string name="footer_line_1">Se fue la luz! · Versión 1.0.0</string>
-    <string name="footer_line_2_prefix">Creado por </string>
-    <string name="footer_author">SaSuKe2512</string>
-    <string name="footer_line_3">© 2026 Se fue la luz! Todos los derechos reservados.</string>
 </resources>

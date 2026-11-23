@@ -173,7 +173,7 @@ fun HistoryScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .testTag("history_list"),
-                    contentPadding = PaddingValues(bottom = bottomContentPadding + 16.dp),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding + 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (uiState.activeOutage != null) {

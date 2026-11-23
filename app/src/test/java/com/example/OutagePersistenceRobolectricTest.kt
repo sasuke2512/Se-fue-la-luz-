@@ -116,7 +116,11 @@ class OutagePersistenceRobolectricTest {
         assertEquals(2, restored.size)
 
         val now = t2End + 3_600_000L
-        val stats = OutageStatsCalculator.calculate(restored, now, tz)
+        val stats = OutageStatsCalculator.calculate(
+            outages = restored,
+            nowMillis = now,
+            timeZone = tz
+        )
         assertEquals(5_400_000L, stats.today.withoutPowerMillis)
         assertEquals(2, stats.today.outageCount)
     }

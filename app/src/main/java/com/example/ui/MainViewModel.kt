@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.BuildConfig
 import com.example.data.local.AppThemeMode
 import com.example.data.local.OutageDatabase
 import com.example.data.local.OutageEntity
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -50,6 +50,13 @@ sealed interface UiEvent {
     data object RequestNotificationPermission : UiEvent
 }
 
+private data class BaseTrackingInputs(
+    val activeOutage: OutageEntity?,
+    val allOutages: List<OutageEntity>,
+    val nowMillis: Long,
+    val trackingStartMillis: Long?
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = OutageDatabase.getInstance(application)
@@ -68,20 +75,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = AppThemeMode.SYSTEM
         )
 
-    val uiState: StateFlow<MainUiState> = combine(
+    private val baseInputs = combine(
         repository.activeOutage,
         repository.allOutages,
         _nowMillis,
-        themeMode,
-        _searchQuery
-    ) { active, all, now, theme, query ->
-        val completed = all.filter { it.endTimeMillis != null }
-        val stats = OutageStatsCalculator.calculate(all, now)
-        MainUiState(
+        preferences.trackingStartMillis
+    ) { active, all, now, trackingStart ->
+        BaseTrackingInputs(
             activeOutage = active,
             allOutages = all,
-            completedOutages = completed,
             nowMillis = now,
+            trackingStartMillis = trackingStart
+        )
+    }
+
+    val uiState: StateFlow<MainUiState> = combine(
+        baseInputs,
+        themeMode,
+        _searchQuery
+    ) { base, theme, query ->
+        val completed = base.allOutages.filter { it.endTimeMillis != null }
+        val stats = OutageStatsCalculator.calculate(
+            outages = base.allOutages,
+            nowMillis = base.nowMillis,
+            trackingStartMillis = base.trackingStartMillis
+        )
+        MainUiState(
+            activeOutage = base.activeOutage,
+            allOutages = base.allOutages,
+            completedOutages = completed,
+            nowMillis = base.nowMillis,
             stats = stats,
             themeMode = theme,
             searchQuery = query,
@@ -94,6 +117,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     init {
+        viewModelScope.launch {
+            preferences.ensureTrackingStartInitialized(System.currentTimeMillis())
+        }
         startClockTicker()
         syncActiveNotificationOnLaunch()
     }
@@ -230,7 +256,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun buildExportJson(): String {
-        return repository.exportCompletedToJson(appVersion = "1.0.0")
+        return repository.exportCompletedToJson(appVersion = BuildConfig.VERSION_NAME)
     }
 
     fun importBackupJson(rawJson: String) {
