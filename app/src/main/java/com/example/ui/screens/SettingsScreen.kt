@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -441,6 +442,15 @@ private fun ClosingLegalBlock(
     val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
     val linkColor = MaterialTheme.colorScheme.primary
 
+    val versionLineAnnotated = remember(appVersion) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append("Se fue la luz!")
+            }
+            append(" · Versión $appVersion")
+        }
+    }
+
     val createdByAnnotated = remember(linkColor) {
         buildAnnotatedString {
             append("Created by ")
@@ -451,7 +461,7 @@ private fun ClosingLegalBlock(
                         style = SpanStyle(
                             color = linkColor,
                             fontWeight = FontWeight.Bold,
-                            textDecoration = TextDecoration.Underline
+                            textDecoration = TextDecoration.None
                         )
                     )
                 )
@@ -473,7 +483,7 @@ private fun ClosingLegalBlock(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = "Se fue la luz! · Versión $appVersion",
+            text = versionLineAnnotated,
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )

@@ -2,6 +2,8 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val SplashBackgroundColor = Color(0xFF16171B)
+
 // Dark theme (Charcoal & Amber Light)
 val AmberPrimaryDark = Color(0xFFF59E0B)
 val AmberGlowDark = Color(0xFFFBBF24)

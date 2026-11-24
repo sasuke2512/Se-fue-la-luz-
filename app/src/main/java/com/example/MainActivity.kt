@@ -9,9 +9,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -25,9 +32,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -47,7 +57,9 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.StatsScreen
 import com.example.ui.theme.SeFueLaLuzTheme
+import com.example.ui.theme.SplashBackgroundColor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -84,6 +96,21 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.INICIO.route
     val currentDestination = AppDestination.entries.firstOrNull { it.route == currentRoute }
         ?: AppDestination.INICIO
+
+    var minSplashElapsed by remember { mutableStateOf(false) }
+    var maxSplashElapsed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(500L)
+        minSplashElapsed = true
+    }
+
+    LaunchedEffect(Unit) {
+        delay(900L)
+        maxSplashElapsed = true
+    }
+
+    val showInAppSplash = !maxSplashElapsed && (!minSplashElapsed || uiState.isLoading)
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -146,95 +173,118 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
     val density = LocalDensity.current
     var bottomOverlayHeight by remember { mutableStateOf(88.dp) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { _ ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = AppDestination.INICIO.route,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                composable(AppDestination.INICIO.route) {
-                    HomeScreen(
-                        uiState = uiState,
-                        bottomContentPadding = bottomOverlayHeight,
-                        onStartOutage = viewModel::onStartOutageClicked,
-                        onStopOutage = viewModel::onStopOutageClicked,
-                        onCancelActiveOutage = viewModel::onCancelActiveOutageConfirmed,
-                        onAddManualOutage = viewModel::addManualOutage
-                    )
-                }
-                composable(AppDestination.HISTORIAL.route) {
-                    HistoryScreen(
-                        uiState = uiState,
-                        bottomContentPadding = bottomOverlayHeight,
-                        onSearchQueryChange = viewModel::onSearchQueryChanged,
-                        onUpdateOutage = viewModel::updateOutage,
-                        onDeleteOutage = viewModel::deleteOutage
-                    )
-                }
-                composable(AppDestination.ESTADISTICAS.route) {
-                    StatsScreen(
-                        uiState = uiState,
-                        bottomContentPadding = bottomOverlayHeight
-                    )
-                }
-                composable(AppDestination.AJUSTES.route) {
-                    SettingsScreen(
-                        uiState = uiState,
-                        bottomContentPadding = bottomOverlayHeight,
-                        onThemeModeChange = viewModel::setThemeMode,
-                        onExportJsonClick = {
-                            val today = DayKey.fromMillis(System.currentTimeMillis())
-                            val filename = String.format(
-                                Locale.US,
-                                "SeFueLaLuz-respaldo-%04d%02d%02d.json",
-                                today.year,
-                                today.month,
-                                today.dayOfMonth
-                            )
-                            exportJsonLauncher.launch(filename)
-                        },
-                        onImportJsonClick = {
-                            importJsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
-                        },
-                        onDeleteAllConfirmed = viewModel::deleteAllData,
-                        onShowMessage = { msg ->
-                            viewModel.showNotice(msg, NoticeType.SUCCESS)
-                        }
-                    )
-                }
-            }
-
-            TopFloatingNoticeHost(
-                notice = currentNotice,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-
-            FloatingPillBottomBarWithFooter(
-                currentDestination = currentDestination,
-                onNavigate = { target ->
-                    navController.navigate(target.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { _ ->
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onSizeChanged { size ->
-                        bottomOverlayHeight = with(density) { size.height.toDp() }
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = AppDestination.INICIO.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(AppDestination.INICIO.route) {
+                        HomeScreen(
+                            uiState = uiState,
+                            bottomContentPadding = bottomOverlayHeight,
+                            onStartOutage = viewModel::onStartOutageClicked,
+                            onStopOutage = viewModel::onStopOutageClicked,
+                            onCancelActiveOutage = viewModel::onCancelActiveOutageConfirmed,
+                            onAddManualOutage = viewModel::addManualOutage
+                        )
                     }
-            )
+                    composable(AppDestination.HISTORIAL.route) {
+                        HistoryScreen(
+                            uiState = uiState,
+                            bottomContentPadding = bottomOverlayHeight,
+                            onSearchQueryChange = viewModel::onSearchQueryChanged,
+                            onUpdateOutage = viewModel::updateOutage,
+                            onDeleteOutage = viewModel::deleteOutage
+                        )
+                    }
+                    composable(AppDestination.ESTADISTICAS.route) {
+                        StatsScreen(
+                            uiState = uiState,
+                            bottomContentPadding = bottomOverlayHeight
+                        )
+                    }
+                    composable(AppDestination.AJUSTES.route) {
+                        SettingsScreen(
+                            uiState = uiState,
+                            bottomContentPadding = bottomOverlayHeight,
+                            onThemeModeChange = viewModel::setThemeMode,
+                            onExportJsonClick = {
+                                val today = DayKey.fromMillis(System.currentTimeMillis())
+                                val filename = String.format(
+                                    Locale.US,
+                                    "SeFueLaLuz-respaldo-%04d%02d%02d.json",
+                                    today.year,
+                                    today.month,
+                                    today.dayOfMonth
+                                )
+                                exportJsonLauncher.launch(filename)
+                            },
+                            onImportJsonClick = {
+                                importJsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                            },
+                            onDeleteAllConfirmed = viewModel::deleteAllData,
+                            onShowMessage = { msg ->
+                                viewModel.showNotice(msg, NoticeType.SUCCESS)
+                            }
+                        )
+                    }
+                }
+
+                TopFloatingNoticeHost(
+                    notice = currentNotice,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                FloatingPillBottomBarWithFooter(
+                    currentDestination = currentDestination,
+                    onNavigate = { target ->
+                        navController.navigate(target.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .onSizeChanged { size ->
+                            bottomOverlayHeight = with(density) { size.height.toDp() }
+                        }
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showInAppSplash,
+            enter = EnterTransition.None,
+            exit = fadeOut(animationSpec = tween(durationMillis = 320))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(SplashBackgroundColor)
+                    .testTag("in_app_splash"),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
         }
     }
 }
