@@ -12,13 +12,10 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,9 +37,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.domain.DayKey
 import com.example.ui.MainViewModel
+import com.example.ui.NoticeType
 import com.example.ui.UiEvent
 import com.example.ui.components.AppDestination
 import com.example.ui.components.FloatingPillBottomBarWithFooter
+import com.example.ui.components.TopFloatingNoticeHost
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.SettingsScreen
@@ -77,9 +76,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SeFueLaLuzApp(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentNotice by viewModel.currentNotice.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.INICIO.route
@@ -105,9 +104,9 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
                             stream.write(json.toByteArray(Charsets.UTF_8))
                         } ?: error("No se pudo abrir el archivo de destino")
                     }
-                    snackbarHostState.showSnackbar("Historial exportado correctamente")
+                    viewModel.showNotice("Historial exportado correctamente", NoticeType.SUCCESS)
                 } catch (_: Exception) {
-                    snackbarHostState.showSnackbar("No se pudo exportar el archivo JSON")
+                    viewModel.showNotice("No se pudo exportar el archivo JSON", NoticeType.INFO)
                 }
             }
         }
@@ -126,7 +125,7 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
                     }
                     viewModel.importBackupJson(raw)
                 } catch (_: Exception) {
-                    snackbarHostState.showSnackbar("No se pudo leer el archivo seleccionado")
+                    viewModel.showNotice("No se pudo leer el archivo seleccionado", NoticeType.INFO)
                 }
             }
         }
@@ -135,9 +134,6 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is UiEvent.ShowMessage -> {
-                    snackbarHostState.showSnackbar(event.message)
-                }
                 UiEvent.RequestNotificationPermission -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -211,17 +207,15 @@ fun SeFueLaLuzApp(viewModel: MainViewModel) {
                         },
                         onDeleteAllConfirmed = viewModel::deleteAllData,
                         onShowMessage = { msg ->
-                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                            viewModel.showNotice(msg, NoticeType.SUCCESS)
                         }
                     )
                 }
             }
 
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomOverlayHeight + 8.dp, start = 16.dp, end = 16.dp)
+            TopFloatingNoticeHost(
+                notice = currentNotice,
+                modifier = Modifier.align(Alignment.TopCenter)
             )
 
             FloatingPillBottomBarWithFooter(

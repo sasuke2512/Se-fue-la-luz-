@@ -15,6 +15,7 @@ import com.example.domain.OutageStatsCalculator
 import com.example.domain.OutageStatsSnapshot
 import com.example.domain.SpanishFormatters
 import com.example.notification.OutageNotificationHelper
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,11 +23,23 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
+enum class NoticeType {
+    SUCCESS,
+    INFO
+}
+
+data class AppNotice(
+    val id: Long,
+    val message: String,
+    val type: NoticeType = NoticeType.INFO
+)
 
 data class MainUiState(
     val activeOutage: OutageEntity? = null,
@@ -46,7 +59,6 @@ data class MainUiState(
 }
 
 sealed interface UiEvent {
-    data class ShowMessage(val message: String) : UiEvent
     data object RequestNotificationPermission : UiEvent
 }
 
@@ -65,6 +77,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _nowMillis = MutableStateFlow(System.currentTimeMillis())
     private val _searchQuery = MutableStateFlow("")
+    private val _currentNotice = MutableStateFlow<AppNotice?>(null)
+    val currentNotice: StateFlow<AppNotice?> = _currentNotice.asStateFlow()
+    private var noticeDismissJob: Job? = null
+
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
@@ -124,6 +140,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncActiveNotificationOnLaunch()
     }
 
+    fun showNotice(message: String, type: NoticeType = NoticeType.INFO) {
+        noticeDismissJob?.cancel()
+        _currentNotice.value = AppNotice(
+            id = System.nanoTime(),
+            message = message,
+            type = type
+        )
+        noticeDismissJob = viewModelScope.launch {
+            delay(2_500L)
+            _currentNotice.value = null
+        }
+    }
+
     private fun startClockTicker() {
         viewModelScope.launch {
             while (isActive) {
@@ -156,7 +185,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val now = System.currentTimeMillis()
             val insertedId = repository.startOutage(now)
             if (insertedId == null) {
-                _events.emit(UiEvent.ShowMessage("Ya hay un apagón en curso."))
+                showNotice("Ya hay un apagón en curso.", NoticeType.INFO)
                 return@launch
             }
             _nowMillis.value = now
@@ -199,7 +228,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val duration = SpanishFormatters.formatDurationReadable(
                     completed.endTimeMillis - completed.startTimeMillis
                 )
-                _events.emit(UiEvent.ShowMessage("Apagón guardado ($duration)"))
+                showNotice("Apagón guardado ($duration)", NoticeType.SUCCESS)
             }
         }
     }
@@ -209,7 +238,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.cancelActiveOutage()
             _nowMillis.value = System.currentTimeMillis()
             OutageNotificationHelper.cancelOutageNotification(getApplication())
-            _events.emit(UiEvent.ShowMessage("Apagón activo cancelado"))
+            showNotice("Apagón activo cancelado", NoticeType.SUCCESS)
         }
     }
 
@@ -218,9 +247,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 repository.addManualOutage(startMillis, endMillis, note)
                 _nowMillis.value = System.currentTimeMillis()
-                _events.emit(UiEvent.ShowMessage("Apagón registrado en el historial"))
+                showNotice("Apagón registrado en el historial", NoticeType.SUCCESS)
             } catch (e: IllegalArgumentException) {
-                _events.emit(UiEvent.ShowMessage(e.message ?: "Horario inválido"))
+                showNotice(e.message ?: "Horario inválido", NoticeType.INFO)
             }
         }
     }
@@ -230,9 +259,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 repository.updateOutage(outage)
                 _nowMillis.value = System.currentTimeMillis()
-                _events.emit(UiEvent.ShowMessage("Cambios guardados"))
+                showNotice("Cambios guardados", NoticeType.SUCCESS)
             } catch (e: IllegalArgumentException) {
-                _events.emit(UiEvent.ShowMessage(e.message ?: "Horario inválido"))
+                showNotice(e.message ?: "Horario inválido", NoticeType.INFO)
             }
         }
     }
@@ -241,7 +270,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.deleteOutage(id)
             _nowMillis.value = System.currentTimeMillis()
-            _events.emit(UiEvent.ShowMessage("Apagón eliminado"))
+            showNotice("Apagón eliminado", NoticeType.SUCCESS)
         }
     }
 
@@ -273,9 +302,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         append(" · Inválidos: ${result.invalidCount}")
                     }
                 }
-                _events.emit(UiEvent.ShowMessage(msg))
+                showNotice(msg, NoticeType.SUCCESS)
             } catch (_: Exception) {
-                _events.emit(UiEvent.ShowMessage("El archivo JSON no tiene un formato válido"))
+                showNotice("El archivo JSON no tiene un formato válido", NoticeType.INFO)
             }
         }
     }
@@ -288,7 +317,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             preferences.clearTrackingStart()
             preferences.ensureTrackingStartInitialized(resetNow)
             _nowMillis.value = resetNow
-            _events.emit(UiEvent.ShowMessage("Todos los datos fueron eliminados"))
+            showNotice("Todos los datos fueron eliminados", NoticeType.SUCCESS)
         }
     }
 }

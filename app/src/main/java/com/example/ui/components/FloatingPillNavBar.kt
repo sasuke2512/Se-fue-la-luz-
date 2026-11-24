@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.theme.OutfitFontFamily
 
 enum class AppDestination(
     val route: String,
@@ -95,7 +96,7 @@ fun FloatingPillBottomBarWithFooter(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
@@ -113,7 +114,7 @@ fun FloatingPillBottomBarWithFooter(
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AppDestination.entries.forEach { dest ->
@@ -139,10 +140,9 @@ fun FloatingPillBottomBarWithFooter(
 
                     Box(
                         modifier = Modifier
-                            .width(72.dp)
+                            .width(78.dp)
                             .height(48.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(pillColor)
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = ripple(bounded = true),
@@ -151,28 +151,37 @@ fun FloatingPillBottomBarWithFooter(
                             .testTag(dest.testTag),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(horizontal = 2.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(width = 70.dp, height = 40.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(pillColor),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = if (selected) dest.selectedIcon else dest.unselectedIcon,
-                                contentDescription = label,
-                                tint = contentColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = label,
-                                color = contentColor,
-                                fontSize = 11.sp,
-                                lineHeight = 12.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Clip
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (selected) dest.selectedIcon else dest.unselectedIcon,
+                                    contentDescription = label,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(1.dp))
+                                Text(
+                                    text = label,
+                                    color = contentColor,
+                                    fontFamily = OutfitFontFamily,
+                                    fontSize = 11.sp,
+                                    lineHeight = 12.sp,
+                                    letterSpacing = (-0.2).sp,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Clip
+                                )
+                            }
                         }
                     }
                 }
