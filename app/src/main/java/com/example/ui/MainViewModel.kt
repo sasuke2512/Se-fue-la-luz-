@@ -284,7 +284,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.deleteAllOutages()
             OutageNotificationHelper.cancelOutageNotification(getApplication())
-            _nowMillis.value = System.currentTimeMillis()
+            val resetNow = System.currentTimeMillis()
+            preferences.clearTrackingStart()
+            preferences.ensureTrackingStartInitialized(resetNow)
+            _nowMillis.value = resetNow
             _events.emit(UiEvent.ShowMessage("Todos los datos fueron eliminados"))
         }
     }

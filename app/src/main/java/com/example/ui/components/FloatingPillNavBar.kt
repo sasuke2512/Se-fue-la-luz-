@@ -15,7 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -94,15 +95,14 @@ fun FloatingPillBottomBarWithFooter(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 560.dp)
-                .fillMaxWidth()
+                .wrapContentWidth()
                 .testTag("floating_nav_pill"),
-            shape = RoundedCornerShape(32.dp),
+            shape = RoundedCornerShape(50),
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
             shadowElevation = 10.dp,
@@ -112,10 +112,8 @@ fun FloatingPillBottomBarWithFooter(
             )
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AppDestination.entries.forEach { dest ->
@@ -141,9 +139,9 @@ fun FloatingPillBottomBarWithFooter(
 
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .width(72.dp)
                             .height(48.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                            .clip(RoundedCornerShape(50))
                             .background(pillColor)
                             .clickable(
                                 interactionSource = interactionSource,
@@ -155,7 +153,8 @@ fun FloatingPillBottomBarWithFooter(
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 2.dp)
                         ) {
                             Icon(
                                 imageVector = if (selected) dest.selectedIcon else dest.unselectedIcon,

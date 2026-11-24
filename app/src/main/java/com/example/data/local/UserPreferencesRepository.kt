@@ -65,4 +65,10 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.NOTIFICATION_PERMISSION_ASKED] = true
         }
     }
+
+    suspend fun clearTrackingStart() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(Keys.TRACKING_START_MILLIS)
+        }
+    }
 }

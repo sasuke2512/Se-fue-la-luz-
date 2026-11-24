@@ -337,12 +337,12 @@ fun SettingsScreen(
                 }
             }
 
-            // Unified Footer + Legal Closing Block
+            // Unified Footer + Legal Closing Block (Plus Messenger / Telegram style)
             ClosingLegalBlock(
                 appVersion = appVersion,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 8.dp)
+                    .padding(top = 8.dp, bottom = 8.dp)
                     .testTag("legal_disclaimer_block")
             )
         }
@@ -353,7 +353,7 @@ fun SettingsScreen(
             onDismissRequest = { deleteConfirmStep = 0 },
             title = { Text("¿Borrar todos los datos?") },
             text = {
-                Text("Se eliminarán todos los apagones guardados en el historial y estadísticas.")
+                Text("Se borrarán todos los apagones registrados y el conteo de tiempo empezará de nuevo desde ahora.")
             },
             confirmButton = {
                 TextButton(
@@ -374,7 +374,7 @@ fun SettingsScreen(
             onDismissRequest = { deleteConfirmStep = 0 },
             title = { Text("Confirmación definitiva") },
             text = {
-                Text("Esta acción no se puede deshacer. ¿Seguro que deseas vaciar por completo la base de datos local?")
+                Text("Esta acción no se puede deshacer. Se borrarán todos los apagones registrados y el conteo de tiempo empezará de nuevo desde ahora.")
             },
             confirmButton = {
                 TextButton(
@@ -462,43 +462,39 @@ private fun ClosingLegalBlock(
     }
 
     val legalTextStyle = MaterialTheme.typography.bodySmall.copy(
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
+        fontSize = 12.sp,
+        lineHeight = 17.sp,
         color = mutedColor
     )
 
     Column(
         modifier = modifier.padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Línea A
         Text(
             text = "Se fue la luz! · Versión $appVersion",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
-        // Línea B
         Text(
             text = "© 2026 Se fue la luz! Todos los derechos reservados.",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
-        // Línea C
         Text(
             text = createdByAnnotated,
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
-        // Párrafo D
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "UNE y Unión Eléctrica son marcas y nombres comerciales propiedad de la Unión Eléctrica de Cuba (UNE). Todos los derechos sobre esas marcas pertenecen a su propietario.",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )
-        // Párrafo E
         Text(
-            text = "«Se fue la luz!» es una aplicación personal, creada con fines informáticos e informativos, para que cada usuario lleve su propio registro de los apagones que anota a mano. No está afiliada, respaldada, patrocinada ni aprobada por la Unión Eléctrica de Cuba (UNE) ni por ninguna de sus empresas, y ningún dato de la app proviene de la UNE: todos los registros los introduce el propio usuario en su teléfono.",
+            text = "«Se fue la luz!» es una aplicación personal, creada con fines informativos, para que cada usuario lleve su propio registro de los apagones que anota a mano. No está afiliada, respaldada, patrocinada ni aprobada por la Unión Eléctrica de Cuba (UNE) ni por ninguna de sus empresas, y ningún dato de la app proviene de la UNE: todos los registros los introduce el propio usuario en su teléfono.",
             style = legalTextStyle,
             textAlign = TextAlign.Center
         )

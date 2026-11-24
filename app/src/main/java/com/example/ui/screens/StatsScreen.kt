@@ -98,10 +98,14 @@ fun StatsScreen(
                 modifier = Modifier.testTag("stats_month_card")
             )
 
+            val formattedStart = SpanishFormatters.formatDateTime12h(stats.effectiveTrackingStartMillis)
+            val trackingNote = if (formattedStart.endsWith(".")) {
+                "El tiempo con luz se cuenta desde que empezaste a usar la app: $formattedStart"
+            } else {
+                "El tiempo con luz se cuenta desde que empezaste a usar la app: $formattedStart."
+            }
             Text(
-                text = "El tiempo con luz se cuenta desde que empezaste a usar la app: ${
-                    SpanishFormatters.formatDateTime12h(stats.effectiveTrackingStartMillis)
-                }.",
+                text = trackingNote,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier

@@ -124,4 +124,23 @@ class OutagePersistenceRobolectricTest {
         assertEquals(5_400_000L, stats.today.withoutPowerMillis)
         assertEquals(2, stats.today.outageCount)
     }
+
+    @Test
+    fun `clearTrackingStart removes trackingStartMillis and allows reinitialization from reset time`() = runTest {
+        val prefs = com.example.data.local.UserPreferencesRepository(context)
+        val initialTime = 1_763_900_000_000L
+        val resolved1 = prefs.ensureTrackingStartInitialized(initialTime)
+        assertEquals(initialTime, resolved1)
+        assertEquals(initialTime, prefs.trackingStartMillis.first())
+
+        // Clearing removes the key completely
+        prefs.clearTrackingStart()
+        assertNull(prefs.trackingStartMillis.first())
+
+        // Next initialization sets the new tracking start timestamp
+        val resetTime = initialTime + 7_200_000L
+        val resolved2 = prefs.ensureTrackingStartInitialized(resetTime)
+        assertEquals(resetTime, resolved2)
+        assertEquals(resetTime, prefs.trackingStartMillis.first())
+    }
 }
